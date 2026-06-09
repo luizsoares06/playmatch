@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayMatch — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/components.js"></script>
+<script>
+  PM.checarLogin();
+  document.body.insertAdjacentHTML('afterbegin',
+    PM.navbar('dashboard') +
+    PM.breadcrumb(2, 'Dashboard — Painel do Organizador') +
+    PM.sidebar('dashboard')
+  );
+</script>
+
+<main class="main-content">
+  <div class="page-header">
+    <div class="page-title" id="saudacao">Olá! 👋</div>
+    <div class="page-subtitle" id="subtitulo">Carregando dados...</div>
+  </div>
+
+  <div class="grid-4 mb-20">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--accent-soft);">🏆</div>
+      <div class="stat-value" id="total-ativos">—</div>
+      <div class="stat-label">Torneios Ativos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--teal-soft);">🛡️</div>
+      <div class="stat-value" id="total-abertos">—</div>
+      <div class="stat-label">Com Inscrições Abertas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--purple-soft);">📋</div>
+      <div class="stat-value" id="total-torneios">—</div>
+      <div class="stat-label">Total de Torneios</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(255,255,255,0.06);">✅</div>
+      <div class="stat-value" id="total-encerrados">—</div>
+      <div class="stat-label">Encerrados</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="flex-between mb-20">
+      <h2 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;">Torneios Recentes</h2>
+      <a href="/playmatch/formulario.html" class="btn btn-primary">+ Novo Torneio</a>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Torneio</th>
+          <th>Modalidade</th>
+          <th>Formato</th>
+          <th>Status</th>
+          <th>Data Início</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-torneios">
+        <tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px;">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+  const u = PM.usuario();
+  document.getElementById('saudacao').textContent  = `Olá, ${u.nome?.split(' ')[0] || 'Organizador'}! 👋`;
+  document.getElementById('subtitulo').textContent = `Aqui está o resumo dos seus torneios — ${new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}`;
+
+  async function carregarDados() {
+    try {
+      const resp = await fetch('http://localhost/playmatch/api/torneios/listar.php');
+      const torneios = await resp.json();
+
+      document.getElementById('total-torneios').textContent  = torneios.length;
+      document.getElementById('total-ativos').textContent    = torneios.filter(t => t.status === 'em-andamento').length;
+      document.getElementById('total-abertos').textContent   = torneios.filter(t => t.status === 'aberto').length;
+      document.getElementById('total-encerrados').textContent= torneios.filter(t => t.status === 'encerrado').length;
+
+      const tbody = document.getElementById('tabela-torneios');
+      if (torneios.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px;">Nenhum torneio cadastrado ainda.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = torneios.slice(0, 6).map(t => `
+        <tr style="cursor:pointer" onclick="window.location='/playmatch/listagem.html'">
+          <td class="td-name">${t.nome}</td>
+          <td style="color:${PM.gameColor(t.modalidade)};font-weight:600;">${t.modalidade}</td>
+          <td style="color:var(--text-muted)">${t.formato}</td>
+          <td>${PM.badgeStatus(t.status)}</td>
+          <td>${PM.fmtData(t.data_inicio)}</td>
+        </tr>`).join('');
+    } catch(e) {
+      document.getElementById('tabela-torneios').innerHTML =
+        `<tr><td colspan="5" style="color:#fca5a5;text-align:center;padding:20px;">Erro ao carregar. Verifique se o XAMPP está rodando.</td></tr>`;
+    }
+  }
+
+  carregarDados();
+</script>
+</body>
+</html>

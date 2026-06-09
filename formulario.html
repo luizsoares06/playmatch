@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayMatch — Formulário</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .form-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px 32px; max-width:560px; }
+    .form-card h2 { font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin-bottom:4px; }
+    .form-card .sub { font-size:.8rem; color:var(--text-muted); margin-bottom:24px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .hint { font-size:.72rem; color:var(--text-muted); margin-top:3px; }
+    .form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+    #toast { display:none; position:fixed; top:80px; right:24px; background:var(--green-soft); border:1px solid rgba(34,197,94,.3); color:#86efac; padding:12px 20px; border-radius:var(--radius-md); font-size:.85rem; font-weight:600; z-index:999; }
+  </style>
+</head>
+<body>
+<script src="js/components.js"></script>
+<script>
+  PM.checarLogin();
+  document.body.insertAdjacentHTML('afterbegin',
+    PM.navbar('formulario') +
+    PM.breadcrumb(4, 'Formulário de Cadastro / Edição de Torneio') +
+    PM.sidebar('formulario')
+  );
+</script>
+
+<div id="toast">✓ Torneio salvo com sucesso!</div>
+
+<main class="main-content">
+  <div class="form-card">
+    <h2>Novo Torneio</h2>
+    <p class="sub">Preencha as informações abaixo. Campos com * são obrigatórios.</p>
+
+    <div id="msg" class="alert alert-error" style="display:none;"></div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="form-group">
+        <label class="form-label">Nome do Torneio *</label>
+        <input id="nome" type="text" class="form-control" placeholder="Ex: Copa Universitária Valorant 2026">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Modalidade *</label>
+          <select id="modalidade" class="form-control">
+            <option value="">Selecione...</option>
+            <option>Valorant</option><option>CS2</option>
+            <option>League of Legends</option><option>Futsal</option><option>Basquete</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Formato *</label>
+          <select id="formato" class="form-control">
+            <option value="">Selecione...</option>
+            <option value="mata-mata">Eliminação Simples (Mata-mata)</option>
+            <option value="grupos-playoffs">Grupos + Playoffs</option>
+            <option value="pontos-corridos">Pontos Corridos (Liga)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data de Início *</label>
+          <input id="data_inicio" type="date" class="form-control" value="2026-06-01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de Encerramento</label>
+          <input id="data_fim" type="date" class="form-control" value="2026-06-30">
+          <p class="hint">Opcional — deixe em branco se indefinido</p>
+        </div>
+      </div>
+      <div class="form-group" style="max-width:220px">
+        <label class="form-label">Máximo de Times *</label>
+        <input id="max_times" type="number" class="form-control" placeholder="Ex: 16" min="2">
+        <p class="hint">Mínimo: 2. Recomendado: 4, 8, 16, 32</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrição</label>
+        <textarea id="descricao" class="form-control" rows="3" placeholder="Regras, premiação, informações gerais..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Premiação</label>
+        <input id="premiacao" type="text" class="form-control" placeholder="Ex: 1º lugar: R$ 500 + troféu">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="/playmatch/listagem.html" class="btn btn-ghost">Cancelar</a>
+      <button class="btn btn-primary" onclick="salvar()">Salvar Torneio ✓</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  async function salvar() {
+    const campos = ['nome','modalidade','formato','data_inicio','max_times'];
+    for (const c of campos) {
+      if (!document.getElementById(c).value) {
+        const msg = document.getElementById('msg');
+        msg.textContent = '✗  Preencha todos os campos obrigatórios (*).';
+        msg.style.display = 'flex'; return;
+      }
+    }
+
+    const u = PM.usuario();
+    const corpo = {
+      nome:           document.getElementById('nome').value,
+      modalidade:     document.getElementById('modalidade').value,
+      formato:        document.getElementById('formato').value,
+      data_inicio:    document.getElementById('data_inicio').value,
+      data_fim:       document.getElementById('data_fim').value || null,
+      max_times:      parseInt(document.getElementById('max_times').value),
+      descricao:      document.getElementById('descricao').value,
+      premiacao:      document.getElementById('premiacao').value,
+      id_organizador: u.id_usuario || null
+    };
+
+    try {
+      const resp  = await fetch('http://localhost/playmatch/api/torneios/criar.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(corpo)
+      });
+      const dados = await resp.json();
+
+      if (dados.sucesso) {
+        document.getElementById('toast').style.display = 'block';
+        setTimeout(() => window.location.href = '/playmatch/listagem.html', 1400);
+      } else {
+        const msg = document.getElementById('msg');
+        msg.textContent = '✗  ' + (dados.erro || 'Erro ao salvar.');
+        msg.style.display = 'flex';
+      }
+    } catch(e) {
+      const msg = document.getElementById('msg');
+      msg.textContent = '✗  Não foi possível conectar à API.';
+      msg.style.display = 'flex';
+    }
+  }
+</script>
+</body>
+</html>

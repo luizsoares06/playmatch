@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayMatch — Listagem</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/components.js"></script>
+<script>
+  PM.checarLogin();
+  document.body.insertAdjacentHTML('afterbegin',
+    PM.navbar('listagem') +
+    PM.breadcrumb(3, 'Listagem de Torneios — Com os 3 filtros obrigatórios') +
+    PM.sidebar('listagem')
+  );
+</script>
+
+<main class="main-content">
+  <div class="flex-between mb-20">
+    <div class="page-header" style="margin:0">
+      <div class="page-title">Torneios</div>
+      <div class="page-subtitle">Gerencie todos os campeonatos da plataforma</div>
+    </div>
+    <a href="/playmatch/formulario.html" class="btn btn-primary">+ Novo Torneio</a>
+  </div>
+
+  <div class="filters-bar">
+    <div class="filter-group" style="flex:2">
+      <span class="filter-label">🔍 Filtro 1 — Texto livre</span>
+      <input id="f-texto" type="text" class="form-control" placeholder="Buscar por nome do torneio...">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">📅 Filtro 2 — Datas</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="f-ini" type="date" class="form-control" value="2026-01-01">
+        <span style="color:var(--text-muted);font-size:.8rem">até</span>
+        <input id="f-fim" type="date" class="form-control" value="2026-12-31">
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">🎮 Filtro 3 — Modalidade</span>
+      <select id="f-modal" class="form-control">
+        <option value="">Todas as modalidades</option>
+        <option>Valorant</option><option>CS2</option>
+        <option>League of Legends</option><option>Futsal</option><option>Basquete</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">🔵 Status</span>
+      <select id="f-status" class="form-control">
+        <option value="">Todos os status</option>
+        <option value="em-andamento">Em Andamento</option>
+        <option value="aberto">Inscrições Abertas</option>
+        <option value="encerrado">Encerrado</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="filtrar()" style="align-self:flex-end">Filtrar</button>
+  </div>
+
+  <div class="grid-3" id="grid">
+    <p style="color:var(--text-muted);grid-column:1/-1">Carregando...</p>
+  </div>
+</main>
+
+<script>
+  async function filtrar() {
+    const params = new URLSearchParams({
+      texto:      document.getElementById('f-texto').value,
+      data_ini:   document.getElementById('f-ini').value,
+      data_fim:   document.getElementById('f-fim').value,
+      modalidade: document.getElementById('f-modal').value,
+      status:     document.getElementById('f-status').value,
+    });
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = `<p style="color:var(--text-muted);grid-column:1/-1">Carregando...</p>`;
+
+    try {
+      const resp     = await fetch(`http://localhost/playmatch/api/torneios/listar.php?${params}`);
+      const torneios = await resp.json();
+
+      if (torneios.length === 0) {
+        grid.innerHTML = `<p style="color:var(--text-muted);grid-column:1/-1;padding:20px 0">Nenhum torneio encontrado.</p>`;
+        return;
+      }
+
+      grid.innerHTML = torneios.map(t => `
+        <div class="tournament-card" onclick="window.location='/playmatch/chave.html'">
+          <div class="tc-game-tag" style="color:${PM.gameColor(t.modalidade)}">⚡ ${t.modalidade.toUpperCase()}</div>
+          <div class="tc-name">${t.nome}</div>
+          ${PM.badgeStatus(t.status)}
+          <div class="tc-meta">
+            <span>⚔️ ${t.formato}</span>
+            <span>📅 ${PM.fmtData(t.data_inicio)}</span>
+          </div>
+        </div>`).join('');
+    } catch(e) {
+      grid.innerHTML = `<p style="color:#fca5a5;grid-column:1/-1">Erro ao carregar torneios.</p>`;
+    }
+  }
+
+  filtrar();
+
+  ['f-texto','f-modal','f-status','f-ini','f-fim'].forEach(id => {
+    document.getElementById(id).addEventListener('change', filtrar);
+    document.getElementById(id).addEventListener('input',  filtrar);
+  });
+</script>
+</body>
+</html>

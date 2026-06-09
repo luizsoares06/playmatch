@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayMatch — Relatório</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .report-container { max-width:620px; }
+    .preview-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; margin-top:16px; }
+    .preview-header { display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+    .preview-icon { width:42px; height:42px; border-radius:var(--radius-md); background:var(--accent-soft); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; }
+    .preview-title { font-family:var(--font-display); font-size:1.05rem; font-weight:700; }
+    .preview-sub { font-size:.76rem; color:var(--text-muted); }
+    .stat-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+    .mini-stat { background:rgba(255,255,255,.04); border-radius:var(--radius-sm); padding:12px; text-align:center; }
+    .mini-stat .v { font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:var(--accent); line-height:1; }
+    .mini-stat .l { font-size:.68rem; color:var(--text-muted); margin-top:3px; }
+    .checklist { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .check-item { display:flex; align-items:center; gap:8px; font-size:.79rem; color:var(--text-secondary); padding:7px 10px; background:rgba(255,255,255,.03); border-radius:var(--radius-sm); }
+    .btn-gerar { width:100%; padding:13px; margin-top:20px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-md); font-size:.9rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:background .15s, transform .15s; }
+    .btn-gerar:hover { background:var(--accent-hover); transform:translateY(-1px); }
+    .btn-gerar:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+    #prog-bar { display:none; height:4px; background:rgba(255,255,255,.08); border-radius:4px; margin-top:12px; overflow:hidden; }
+    #prog-fill { height:100%; width:0; background:var(--accent); transition:width .1s linear; border-radius:4px; }
+    #prog-label { display:none; text-align:center; font-size:.76rem; color:var(--text-muted); margin-top:8px; }
+  </style>
+</head>
+<body>
+<script src="js/components.js"></script>
+<script>
+  PM.checarLogin();
+  document.body.insertAdjacentHTML('afterbegin',
+    PM.navbar('relatorio') +
+    PM.breadcrumb(6, 'Relatório em PDF — Configuração e pré-visualização') +
+    PM.sidebar('relatorio')
+  );
+</script>
+
+<main class="main-content">
+  <div class="report-container">
+    <div class="page-header">
+      <div class="page-title">Gerar Relatório em PDF</div>
+      <div class="page-subtitle">Configure e pré-visualize o relatório antes de exportar</div>
+    </div>
+
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;">
+        <div class="form-group">
+          <label class="form-label">Torneio *</label>
+          <select id="r-torneio" class="form-control" onchange="atualizarPreview()">
+            <option>Carregando...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Período (opcional)</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input id="r-ini" type="date" class="form-control" value="2026-05-01">
+            <span style="color:var(--text-muted);font-size:.8rem">até</span>
+            <input id="r-fim" type="date" class="form-control" value="2026-06-30">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-card">
+      <div class="preview-header">
+        <div class="preview-icon">📊</div>
+        <div>
+          <div class="preview-title">Relatório de Desempenho do Torneio</div>
+          <div class="preview-sub" id="prev-sub">Selecione um torneio acima</div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="mini-stat"><div class="v" id="s-times">—</div><div class="l">Times</div></div>
+        <div class="mini-stat"><div class="v">—</div><div class="l">Jogadores</div></div>
+        <div class="mini-stat"><div class="v">—</div><div class="l">Partidas</div></div>
+        <div class="mini-stat"><div class="v">—</div><div class="l">Fases</div></div>
+      </div>
+
+      <div class="form-label" style="margin-bottom:10px;">■ Conteúdo que será gerado no PDF</div>
+      <div class="checklist">
+        <div class="check-item">📋 Capa com dados do torneio</div>
+        <div class="check-item">🏆 Resumo executivo com campeão</div>
+        <div class="check-item">📊 Tabela de classificação final</div>
+        <div class="check-item">⚔️ Chave completa (todas as fases)</div>
+        <div class="check-item">📋 Lista de partidas com placares</div>
+        <div class="check-item">🛡️ Times e escalações</div>
+        <div class="check-item">📈 Estatísticas agregadas</div>
+        <div class="check-item">🏅 Destaques e recordes</div>
+      </div>
+
+      <button class="btn-gerar" id="btn-gerar" onclick="gerarPDF()">
+        📄 &nbsp;Gerar e Baixar PDF
+      </button>
+      <div id="prog-bar"><div id="prog-fill"></div></div>
+      <div id="prog-label"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+  async function carregarTorneios() {
+    try {
+      const resp     = await fetch('http://localhost/playmatch/api/torneios/listar.php');
+      const torneios = await resp.json();
+      const sel      = document.getElementById('r-torneio');
+      sel.innerHTML  = torneios.map(t => `<option value="${t.id_torneio}">${t.nome}</option>`).join('');
+      atualizarPreview();
+    } catch(e) {
+      document.getElementById('r-torneio').innerHTML = '<option>Erro ao carregar</option>';
+    }
+  }
+
+  function atualizarPreview() {
+    const nome = document.getElementById('r-torneio').selectedOptions[0]?.text || '';
+    document.getElementById('prev-sub').textContent =
+      `${nome} · Dados consolidados até ${new Date().toLocaleDateString('pt-BR')}`;
+  }
+
+  const passos = [
+    'Coletando dados do torneio...',
+    'Montando tabela de classificação...',
+    'Gerando chave de partidas...',
+    'Compilando estatísticas...',
+    'Renderizando PDF...',
+    'Finalizando...'
+  ];
+
+  function gerarPDF() {
+    const bar   = document.getElementById('prog-bar');
+    const fill  = document.getElementById('prog-fill');
+    const lbl   = document.getElementById('prog-label');
+    const btn   = document.getElementById('btn-gerar');
+
+    bar.style.display = 'block';
+    lbl.style.display = 'block';
+    btn.disabled = true;
+    btn.textContent = 'Gerando...';
+
+    let i = 0;
+    const iv = setInterval(() => {
+      if (i >= passos.length) {
+        clearInterval(iv);
+        fill.style.width = '100%';
+        lbl.style.color  = 'var(--green)';
+        lbl.textContent  = '✓ PDF gerado com sucesso!';
+        btn.disabled     = false;
+        btn.innerHTML    = '📄 &nbsp;Gerar e Baixar PDF';
+        setTimeout(() => {
+          bar.style.display = 'none';
+          lbl.style.display = 'none';
+          fill.style.width  = '0';
+        }, 3000);
+        return;
+      }
+      fill.style.width = `${Math.round(((i+1)/passos.length)*100)}%`;
+      lbl.textContent  = passos[i];
+      i++;
+    }, 500);
+  }
+
+  carregarTorneios();
+</script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayMatch — Chave</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .bracket-area { overflow-x: auto; padding-bottom: 20px; }
+    .bracket-grid { display: flex; gap: 0; align-items: flex-start; min-width: max-content; }
+    .phase-col { display: flex; flex-direction: column; width: 210px; }
+    .phase-title { text-align:center; font-size:.68rem; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-muted); padding:0 0 12px; }
+    .match-wrap { margin: 5px 4px; }
+    .match-box { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; cursor:pointer; transition: border-color .2s; }
+    .match-box:hover { border-color: var(--border-hover); }
+    .team-row { display:flex; align-items:center; justify-content:space-between; padding:8px 11px; gap:8px; border-bottom:1px solid var(--border); }
+    .team-row:last-of-type { border-bottom:none; }
+    .team-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .team-name { font-size:.82rem; font-weight:500; flex:1; color:var(--text-primary); }
+    .team-name.tbd { color:var(--text-muted); font-style:italic; }
+    .team-score { font-family:var(--font-display); font-weight:700; font-size:1rem; min-width:22px; text-align:right; }
+    .team-score.win { color:var(--green); }
+    .match-footer { padding:4px 11px; font-size:.68rem; color:var(--text-muted); background:rgba(0,0,0,.2); display:flex; align-items:center; gap:5px; }
+    .match-footer.fin  { color:var(--green); }
+    .match-footer.agen { color:var(--yellow); }
+    .champion-box { background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(232,73,15,.1)); border:1px solid rgba(245,158,11,.35); border-radius:var(--radius-lg); padding:22px 16px; text-align:center; margin:5px 4px; min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
+    .champion-name { font-family:var(--font-display); font-size:1.1rem; font-weight:700; color:var(--yellow); }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:200; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px 32px; width:380px; max-width:95vw; }
+    .modal-title { font-family:var(--font-display); font-size:1.15rem; font-weight:700; margin-bottom:20px; }
+    .score-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .score-row span { font-size:.85rem; font-weight:500; flex:1; }
+    .score-row input { width:70px; text-align:center; font-size:1.2rem; font-weight:700; }
+    .form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+  </style>
+</head>
+<body>
+<script src="js/components.js"></script>
+<script>
+  PM.checarLogin();
+  document.body.insertAdjacentHTML('afterbegin',
+    PM.navbar('chave') +
+    PM.breadcrumb(5, 'Chave / Bracket do Torneio — Visualização das partidas por fase') +
+    PM.sidebar('chave')
+  );
+</script>
+
+<!-- Modal Registrar Resultado -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-title">⚔️ Registrar Resultado</div>
+    <div class="score-row">
+      <span id="m-a">Time A</span>
+      <input id="sc-a" class="form-control" type="number" min="0" value="0">
+      <span style="color:var(--text-muted)">×</span>
+      <input id="sc-b" class="form-control" type="number" min="0" value="0">
+      <span id="m-b" style="text-align:right">Time B</span>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarResultado()">Salvar Resultado</button>
+    </div>
+  </div>
+</div>
+
+<main class="main-content">
+  <div class="flex-between mb-20">
+    <div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:4px;">🏆 Copa Universitária Valorant 2026</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="color:var(--accent);font-size:.78rem;font-weight:700;">⚡ Valorant</span>
+        <span style="font-size:.78rem;color:var(--text-muted);">✕ Eliminação Simples</span>
+        <span style="font-size:.78rem;color:var(--text-muted);">🛡️ 8 times</span>
+        <span class="badge badge-andamento">Em Andamento</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" onclick="abrirModal('Time A','Time B')">Registrar Resultado</button>
+      <a href="/playmatch/relatorio.html" class="btn btn-primary">Gerar Relatório PDF</a>
+    </div>
+  </div>
+
+  <div class="bracket-area">
+    <div class="bracket-grid" id="bracket"></div>
+  </div>
+</main>
+
+<script>
+const FASES = [
+  {
+    fase: 'Quartas de Final',
+    partidas: [
+      { a:{nome:'FNC Fênix',cor:'#e8490f'},   b:{nome:'Drakes',cor:'#38bdf8'},      pa:13, pb:7,  status:'fin',  data:'10/05' },
+      { a:{nome:'PAIN Academy',cor:'#c084fc'}, b:{nome:'CaosElite',cor:'#4ade80'},   pa:13, pb:11, status:'fin',  data:'10/05' },
+      { a:{nome:'LOUD Junior',cor:'#fb923c'},  b:{nome:'VK Trainees',cor:'#94a3b8'}, pa:13, pb:5,  status:'fin',  data:'11/05' },
+      { a:{nome:'INTZ Rise',cor:'#818cf8'},    b:{nome:'Rebels',cor:'#94a3b8'},      pa:13, pb:9,  status:'fin',  data:'11/05' },
+    ]
+  },
+  {
+    fase: 'Semifinal',
+    partidas: [
+      { a:{nome:'FNC Fênix',cor:'#e8490f'},  b:{nome:'PAIN Academy',cor:'#c084fc'}, pa:13, pb:8,    status:'fin',  data:'15/05' },
+      { a:{nome:'LOUD Junior',cor:'#fb923c'},b:{nome:'INTZ Rise',cor:'#818cf8'},    pa:null,pb:null, status:'agen', data:'20/05 - 15h' },
+    ]
+  },
+  {
+    fase: 'Final',
+    partidas: [
+      { a:{nome:'FNC Fênix',cor:'#e8490f'}, b:{nome:'A definir',cor:'#5a7a9a'}, pa:null, pb:null, status:'agen', data:'27/05 - 19h' },
+    ]
+  }
+];
+
+function renderPartida(p) {
+  const winA = p.pa !== null && p.pa > p.pb;
+  const winB = p.pb !== null && p.pb > p.pa;
+  return `
+    <div class="match-wrap">
+      <div class="match-box" onclick="abrirModal('${p.a.nome}','${p.b.nome}')">
+        <div class="team-row">
+          <div class="team-dot" style="background:${p.a.cor}"></div>
+          <span class="team-name">${p.a.nome}</span>
+          <span class="team-score ${winA?'win':''}">${p.pa ?? '—'}</span>
+        </div>
+        <div class="team-row">
+          <div class="team-dot" style="background:${p.b.cor}"></div>
+          <span class="team-name ${p.b.nome==='A definir'?'tbd':''}">${p.b.nome}</span>
+          <span class="team-score ${winB?'win':''}">${p.pb ?? '—'}</span>
+        </div>
+        <div class="match-footer ${p.status}">
+          ${p.status==='fin'?'■ Finalizada':'■ Agendada'} &nbsp;${p.data}
+        </div>
+      </div>
+    </div>`;
+}
+
+const grid = document.getElementById('bracket');
+
+FASES.forEach((f, fi) => {
+  if (fi > 0) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'width:28px;flex-shrink:0;';
+    grid.appendChild(sep);
+  }
+  const col = document.createElement('div');
+  col.className = 'phase-col';
+  col.style.marginTop = `${fi * 55}px`;
+  col.innerHTML = `<div class="phase-title">${f.fase}</div>` + f.partidas.map(renderPartida).join('');
+  grid.appendChild(col);
+});
+
+// Coluna do campeão
+const sep2 = document.createElement('div');
+sep2.style.cssText = 'width:28px;flex-shrink:0;';
+grid.appendChild(sep2);
+
+const campCol = document.createElement('div');
+campCol.className = 'phase-col';
+campCol.style.marginTop = `${2 * 55 + 55}px`;
+campCol.innerHTML = `
+  <div class="phase-title">Campeão</div>
+  <div class="champion-box">
+    <div style="font-size:1.8rem">🏆</div>
+    <div class="champion-name">A DEFINIR...</div>
+    <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--text-muted)">???</div>
+    <div style="font-size:.7rem;color:var(--text-muted)">Final em 27/05/2026</div>
+  </div>`;
+grid.appendChild(campCol);
+
+let partidaAtual = null;
+
+function abrirModal(a, b) {
+  document.getElementById('m-a').textContent = a;
+  document.getElementById('m-b').textContent = b;
+  document.getElementById('sc-a').value = 0;
+  document.getElementById('sc-b').value = 0;
+  document.getElementById('modal').classList.add('open');
+}
+
+function fecharModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+async function salvarResultado() {
+  const pa = parseInt(document.getElementById('sc-a').value);
+  const pb = parseInt(document.getElementById('sc-b').value);
+
+  try {
+    await fetch('http://localhost/playmatch/api/torneios/resultado.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_partida: 1, placar_a: pa, placar_b: pb })
+    });
+  } catch(e) {}
+
+  fecharModal();
+  alert(`Resultado salvo: ${pa} × ${pb}`);
+}
+</script>
+</body>
+</html>
